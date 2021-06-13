@@ -19,6 +19,7 @@ client.connect(err => {
     const vaccineCollection = client.db(process.env.DB_NAME).collection("vaccines");
     const ordersCollection = client.db(process.env.DB_NAME).collection("orders");
     const adminCollection = client.db(process.env.DB_NAME).collection("admins")
+    const reviewCollection = client.db(process.env.DB_NAME).collection("reviews")
 
     app.get('/vaccines', (req, res) => {
         vaccineCollection.find({})
@@ -27,9 +28,16 @@ client.connect(err => {
             })
     })
 
+    app.get('/reviews', (req, res) => {
+        reviewCollection.find({})
+            .toArray((err, items) => {
+                res.send(items)
+            })
+    })
+
     app.get('/vaccine/:id', (req, res) => {
         console.log(req.params.id)
-        bikeCollection.find({ _id: ObjectID(req.params.id) })
+        vaccineCollection.find({ _id: ObjectID(req.params.id) })
             .toArray((err, items) => {
                 res.send(items[0])
             })
@@ -39,6 +47,16 @@ client.connect(err => {
         const newVaccine = req.body
         console.log('adding new vaccine:', newVaccine)
         vaccineCollection.insertOne(newVaccine)
+            .then(result => {
+                console.log('inserted Count', result.insertedCount)
+                res.send(result.insertedCount > 0)
+            })
+    })
+
+    app.post('/addReview', (req, res) => {
+        const newReview = req.body
+        console.log('adding new review:', newReview)
+        reviewCollection.insertOne(newReview)
             .then(result => {
                 console.log('inserted Count', result.insertedCount)
                 res.send(result.insertedCount > 0)
@@ -76,6 +94,18 @@ client.connect(err => {
         vaccineCollection.updateOne({ _id: ObjectID(req.params.id) },
             {
                 $set: { price: req.body.price }
+            }
+        )
+            .then(result => {
+                res.send(result.modifiedCount > 0)
+            })
+    })
+
+    app.patch('/updateOrderStatus/:id', (req, res) => {
+        console.log(req.body)
+        ordersCollection.updateOne({ _id: ObjectID(req.params.id) },
+            {
+                $set: { status: req.body.status }
             }
         )
             .then(result => {
