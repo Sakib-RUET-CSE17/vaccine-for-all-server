@@ -20,6 +20,8 @@ client.connect(err => {
     const ordersCollection = client.db(process.env.DB_NAME).collection("orders");
     const adminCollection = client.db(process.env.DB_NAME).collection("admins")
     const reviewCollection = client.db(process.env.DB_NAME).collection("reviews")
+    const liveChatQueueCollection = client.db(process.env.DB_NAME).collection("liveChatQueue")
+    const vaccineUpazillaRelationCollection = client.db(process.env.DB_NAME).collection("vaccineUpazillaRelation")
 
     app.get('/vaccines', (req, res) => {
         vaccineCollection.find({})
@@ -85,7 +87,7 @@ client.connect(err => {
     app.delete('/deleteVaccine/:id', (req, res) => {
         const id = ObjectID(req.params.id)
         console.log('delete this', id)
-        vaccineCollection.findOneAndDelete({ _id: id })
+        vaccineUpazillaRelationCollection.findOneAndDelete({ _id: id })
             .then(documents => res.send(!!documents.value))
     })
 
@@ -94,6 +96,18 @@ client.connect(err => {
         vaccineCollection.updateOne({ _id: ObjectID(req.params.id) },
             {
                 $set: { price: req.body.price }
+            }
+        )
+            .then(result => {
+                res.send(result.modifiedCount > 0)
+            })
+    })
+
+    app.patch('/addStock/:id', (req, res) => {
+        console.log(req.body, req.params.id)
+        vaccineUpazillaRelationCollection.updateOne({ _id: ObjectID(req.params.id) },
+            {
+                $set: { available: req.body.available }
             }
         )
             .then(result => {
@@ -135,6 +149,87 @@ client.connect(err => {
                     .toArray((err, orders) => {
                         res.send(orders)
                     })
+            })
+    })
+
+    app.post('/orderByLocation', (req, res) => {
+        const { division, district, upazilla } = req.body
+        ordersCollection.find({
+            'bookingData.division': division,
+            'bookingData.district': district,
+            'bookingData.upazilla': upazilla,
+        })
+            .toArray((err, orders) => {
+                console.log(orders)
+                res.send(orders)
+            })
+
+    })
+
+    app.post('/addLiveChatQueue', (req, res) => {
+        const newClient = req.body
+        console.log('adding new client:', newClient)
+        liveChatQueueCollection.insertOne(newClient)
+            .then(result => {
+                console.log('inserted Count', result.insertedCount)
+                res.send(result.insertedCount > 0)
+            })
+    })
+
+    app.get('/stopChat/:email', (req, res) => {
+        const email = req.params.email
+        console.log('delete this', email)
+        liveChatQueueCollection.deleteMany({ email })
+            .then(result => res.send(result))
+    })
+
+    app.get('/supportQueue', (req, res) => {
+        liveChatQueueCollection.find({})
+            .toArray((err, items) => {
+                res.send(items)
+            })
+    })
+
+    app.post('/loadVaccine', (req, res) => {
+        const newVaccine = req.body
+        // console.log('adding new vaccine:', newVaccine)
+        vaccineUpazillaRelationCollection.insertOne(newVaccine)
+            .then(result => {
+                console.log('inserted Count', result.insertedCount)
+                res.send(result.insertedCount > 0)
+            })
+    })
+
+    app.post('/vaccineByUpazilla', (req, res) => {
+        const query = req.body
+        console.log('query:', query)
+        const { division, district, upazilla } = query
+        vaccineUpazillaRelationCollection.find({ division, district, upazilla })
+            .toArray((err, vaccines) => {
+                res.send(vaccines)
+            })
+    })
+
+    app.patch('/updateStock/:id', (req, res) => {
+        console.log(req.body)
+        vaccineUpazillaRelationCollection.updateOne({ _id: ObjectID(req.params.id) },
+            {
+                $set: { available: req.body.available }
+            }
+        )
+            .then(result => {
+                res.send(result.modifiedCount > 0)
+            })
+    })
+
+    app.patch('/updateServed/:id', (req, res) => {
+        vaccineUpazillaRelationCollection.updateOne({ _id: ObjectID(req.params.id) },
+            {
+                $inc: { served: 1 }
+            }
+        )
+            .then(result => {
+                res.send(result.modifiedCount > 0)
             })
     })
 });
