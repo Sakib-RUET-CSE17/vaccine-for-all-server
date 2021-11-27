@@ -178,7 +178,7 @@ client.connect(err => {
                 ordersCollection.find(filter)
                     .toArray((err, orders) => {
                         let filteredOrders = orders;
-                        if (admins[0].adminType === 'local') {
+                        if (admins.length > 0 && admins[0]?.adminType === 'local') {
                             filteredOrders = orders.filter(order => order.bookingData.division === admins[0].division
                                 && order.bookingData.district === admins[0].district
                                 && order.bookingData.upazilla === admins[0].upazilla);
@@ -199,7 +199,7 @@ client.connect(err => {
                 ordersCollection.find(filter)
                     .toArray((err, orders) => {
                         let filteredOrders = orders;
-                        if (admins[0].adminType === 'local') {
+                        if (admins.length > 0 && admins[0]?.adminType === 'local') {
                             filteredOrders = orders.filter(order => order.bookingData.division === admins[0].division
                                 && order.bookingData.district === admins[0].district
                                 && order.bookingData.upazilla === admins[0].upazilla);
