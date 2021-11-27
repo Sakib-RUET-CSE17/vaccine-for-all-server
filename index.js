@@ -51,7 +51,7 @@ client.connect(err => {
         vaccineCollection.insertOne(newVaccine)
             .then(result => {
                 console.log('inserted Count', result.insertedCount)
-                res.send(result.insertedCount > 0)
+                res.send(result)
             })
     })
 
@@ -65,7 +65,7 @@ client.connect(err => {
             })
     })
 
-    app.post('/addAdmin', (req, res) => {
+    app.post('/addAdmin', (req, res) => { // to do update
         const newAdmin = req.body
         console.log('adding new admin:', newAdmin)
         adminCollection.insertOne(newAdmin)
@@ -80,6 +80,24 @@ client.connect(err => {
         adminCollection.find({ email: email })
             .toArray((err, admins) => {
                 res.send(admins.length > 0)
+
+            })
+    })
+
+    app.post('/isCentralAdmin', (req, res) => {
+        const email = req.body.email
+        adminCollection.find({ 'email': email, 'adminType': 'central' })
+            .toArray((err, admins) => {
+                res.send(admins.length > 0)
+
+            })
+    })
+    app.post('/getLocalAdminData', (req, res) => {
+        const email = req.body.email
+        adminCollection.find({ 'email': email, 'adminType': 'local' })
+            .toArray((err, admins) => {
+                console.log(admins);
+                res.send(admins[0])
 
             })
     })
@@ -119,7 +137,19 @@ client.connect(err => {
         console.log(req.body)
         ordersCollection.updateOne({ _id: ObjectID(req.params.id) },
             {
-                $set: { status: req.body.status }
+                $set: { status: req.body.status, clearancePhoto: req.body.clearancePhoto }
+            }
+        )
+            .then(result => {
+                res.send(result.modifiedCount > 0)
+            })
+    })
+
+    app.patch('/updatePaymentStatus/:id', (req, res) => {
+        console.log(req.params.id, req.body)
+        ordersCollection.updateOne({ _id: ObjectID(req.params.id) },
+            {
+                $set: { paymentStatus: req.body.paymentStatus }
             }
         )
             .then(result => {
@@ -147,7 +177,35 @@ client.connect(err => {
                 }
                 ordersCollection.find(filter)
                     .toArray((err, orders) => {
-                        res.send(orders)
+                        let filteredOrders = orders;
+                        if (admins[0].adminType === 'local') {
+                            filteredOrders = orders.filter(order => order.bookingData.division === admins[0].division
+                                && order.bookingData.district === admins[0].district
+                                && order.bookingData.upazilla === admins[0].upazilla);
+                            console.log(filteredOrders);
+                        }
+                        res.send(filteredOrders)
+                    })
+            })
+    })
+    app.get('/paidOrders', (req, res) => {
+        const queryEmail = req.query.email
+        adminCollection.find({ email: queryEmail })
+            .toArray((err, admins) => {
+                const filter = { paymentStatus: 'paid' }
+                if (admins.length === 0) {
+                    filter.email = queryEmail
+                }
+                ordersCollection.find(filter)
+                    .toArray((err, orders) => {
+                        let filteredOrders = orders;
+                        if (admins[0].adminType === 'local') {
+                            filteredOrders = orders.filter(order => order.bookingData.division === admins[0].division
+                                && order.bookingData.district === admins[0].district
+                                && order.bookingData.upazilla === admins[0].upazilla);
+                            console.log(filteredOrders);
+                        }
+                        res.send(filteredOrders)
                     })
             })
     })
@@ -155,7 +213,7 @@ client.connect(err => {
     app.post('/orderByLocation', (req, res) => {
         const { division, district, upazilla } = req.body
         ordersCollection.find({
-            'bookingData.division': division,
+            'bookingData.division': division, // easier way
             'bookingData.district': district,
             'bookingData.upazilla': upazilla,
         })
@@ -200,7 +258,7 @@ client.connect(err => {
             })
     })
 
-    app.post('/vaccineByUpazilla', (req, res) => {
+    app.post('/vaccineByUpazilla', (req, res) => { //to do
         const query = req.body
         console.log('query:', query)
         const { division, district, upazilla } = query
@@ -214,7 +272,7 @@ client.connect(err => {
         console.log(req.body)
         vaccineUpazillaRelationCollection.updateOne({ _id: ObjectID(req.params.id) },
             {
-                $set: { available: req.body.available }
+                $inc: { available: -1 }
             }
         )
             .then(result => {
