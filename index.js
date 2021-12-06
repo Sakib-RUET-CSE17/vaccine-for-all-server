@@ -188,6 +188,15 @@ client.connect(err => {
                     })
             })
     })
+
+    app.get('/order/:id', (req, res) => {
+        ordersCollection.find({ _id: ObjectID(req.params.id) })
+            .toArray((err, orders) => {
+                // console.log(orders);
+                res.send(orders[0])
+            })
+    })
+
     app.get('/paidOrders', (req, res) => {
         const queryEmail = req.query.email
         adminCollection.find({ email: queryEmail })
